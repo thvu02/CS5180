@@ -1,14 +1,14 @@
 #-------------------------------------------------------------------------
-# AUTHOR: your name
-# FILENAME: title of the source file
-# SPECIFICATION: description of the program
+# AUTHOR: Trung Vu
+# FILENAME: indexing.py
+# SPECIFICATION: Calculates document-term matrix for collection.csv dataset
 # FOR: CS 5180- Assignment #1
-# TIME SPENT: 2 hrs for Problem #8
+# TIME SPENT: 4 hrs
 #-----------------------------------------------------------*/
 
 #Importing some Python libraries
 import csv
-import math
+import math # additional imported libraries
 
 documents = []
 
@@ -58,7 +58,7 @@ def get_tf(t, d):
     doc_length = len(d.split())
     lowercase_doc = d.casefold()
     term_freq = lowercase_doc.count(t.casefold())
-    return round(term_freq / doc_length, 2)
+    return round(term_freq / doc_length, 4)
     
 # return the document frequency for the provided term
 def get_df(t, D):
@@ -70,21 +70,20 @@ def get_df(t, D):
 
 # return the inverse document freq: log scaled inverse fraction of documents (D) that contain term (T)
 def get_idf(t,D):
-    return round(math.log(len(D)/get_df(t,D),10), 2)
+    return round(math.log(len(D)/get_df(t,D),10), 4)
 
 # return tf-idf
 def get_tf_idf(t,d,D):
-    return round(get_tf(t,d) * get_idf(t,D), 2)
+    return round(get_tf(t,d) * get_idf(t,D), 4)
 
 def get_tf_idf_matrix(terms, documents):
   row = len(documents)+1
-  print(row)
   col = len(terms)+1
   docTermMatrix = [[None]*col for i in range(row)] # add extra col and row for names
 
   # name the documents
   for i, doc_num in zip(range(1,row),range(1,len(documents)+1)):
-     docTermMatrix[i][0] = f"document{doc_num}"
+     docTermMatrix[i][0] = f"D{doc_num}"
 
   # name the terms
   for j, term in zip(range(1,col),terms):
