@@ -2,7 +2,6 @@ from pymongo import MongoClient
 from nltk.tokenize import RegexpTokenizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from math import sqrt
-from sklearn.metrics.pairwise import cosine_similarity
 
 class SearchEngine():
     def __init__(self):
@@ -17,7 +16,7 @@ class SearchEngine():
         self.documents.delete_many({})
         # private variables
         self.vectorizer = None
-        self.doc_vectors = []
+        self.doc_magnitudes = []
         self.terms_vector = {}
         
 
@@ -46,15 +45,17 @@ class SearchEngine():
         # generate terms from documents
         self.vectorizer = TfidfVectorizer(ngram_range=(1, 3))
         tfidf_doc_term_matrix = self.vectorizer.fit_transform(documents)
-        # record vocabulary and document vectors
-        self.terms_vector = self.vectorizer.vocabulary_ # just for debugging
-        self.doc_vectors = tfidf_doc_term_matrix.toarray()
+        self.terms_vector = self.vectorizer.vocabulary_
+        # calculate document magnitudes
+        self.doc_magnitudes = [sqrt(sum([x**2 for x in doc.data])) for doc in tfidf_doc_term_matrix]
         # create inverted index
         inverted_index = {}
         for doc_id, term_id in zip(*tfidf_doc_term_matrix.nonzero()):
             tfidf_value = tfidf_doc_term_matrix[doc_id, term_id]
             if term_id not in inverted_index:
+                # inverted_index[term_id] = [] # this format or other format
                 inverted_index[term_id] = {}
+            # inverted_index[term_id].append({str(doc_id) : tfidf_value}) # this format or other format
             inverted_index[term_id][str(doc_id)] = tfidf_value
         # push to MongoDB
         for pos, docs in inverted_index.items():
@@ -63,12 +64,22 @@ class SearchEngine():
     def rank(self, query):
         # transform query to using learned vocabulary and document frequencies
         X = self.vectorizer.transform([query])
-        query_vector = X.toarray()[0] # index 0 since only one vector
+        mag_query = sqrt(sum([x**2 for x in X.data]))
 
+        # calculate dot product for each query/document pair
+        doc_dot_products = []
+        for docID in range(self.documentIDCount):
+            dot_product = []
+            for pos, tfidf in zip(X.indices, X.data):
+                document = self.terms.find_one({"pos": int(pos)})
+                if str(docID) in document['docs']:
+                    dot_product.append(document['docs'][str(docID)] * tfidf)
+            doc_dot_products.append(sum(dot_product))
+                
         # calculate cosine similarity for each query/document pair
         doc_scores = []
         for docID in range(self.documentIDCount):
-            similarity = round(cosine_similarity([query_vector, self.doc_vectors[docID]])[0][1], 2)
+            similarity = round(doc_dot_products[docID] / (self.doc_magnitudes[docID] * mag_query), 2)
             doc_scores.append((docID, similarity))
 
         # sort documents by similarity
